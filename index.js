@@ -29,6 +29,7 @@ function verifyJWT(req, res, next) {
       return res.status(403).send({ message: "Forbidden access" });
     }
     req.decoded = decoded;
+    // console.log(req.decoded);
     next();
   });
 }
@@ -41,6 +42,7 @@ async function run() {
     //   .collection("bookings");
     const userCollection = client.db("assignment_12").collection("users");
     const ordersCollection = client.db("assignment_12").collection("orders");
+    const ratingsCollection = client.db("assignment_12").collection("ratings");
 
     const verifyAdmin = async (req, res, next) => {
       const requester = req.decoded.email;
@@ -54,22 +56,42 @@ async function run() {
       }
     };
 
-    app.get("/user", verifyJWT, async (req, res) => {
-      const users = await userCollection.find().toArray();
+    // app.get("/user", verifyJWT, async (req, res) => {
+    //   const users = await userCollection.find().toArray();
 
-      res.send(users);
-    });
+    //   res.send(users);
+    // });
+
+    // app.get("/user", verifyJWT, async (req, res) => {
+    //   const client = req.query.client;
+    //   const decodedEmail = req.decoded.email;
+    //   console.log(decodedEmail);
+    //   if (client === decodedEmail) {
+    //     const query = { client: client };
+
+    //     const users = await userCollection.findOne(query).toArray();
+    //     return res.send(users);
+    //   } else {
+    //     return res.status(403).send({ message: "forbidden access" });
+    //   }
+    // });
+
     app.get("/user", verifyJWT, async (req, res) => {
-      const client = req.query.client;
-      const decodedEmail = req.decoded.email;
-      if (client === decodedEmail) {
-        const query = { client: client };
-        const users = await userCollection.find(query).toArray();
-        return res.send(users);
+      const email = req.query.email;
+      console.log(email);
+      if (email === undefined || email === "") {
+        const query = {};
+        const cursor = userCollection.find(query);
+        const user = await cursor.toArray();
+        res.send(user);
       } else {
-        return res.status(403).send({ message: "forbidden access" });
+        const query = { email: email };
+        const cursor = userCollection.find(query);
+        const user = await cursor.toArray();
+        res.send(user);
       }
     });
+
     app.get("/admin/:email", async (req, res) => {
       const email = req.params.email;
       const user = await userCollection.findOne({ email: email });
@@ -168,19 +190,31 @@ async function run() {
       const result = await serviceCollection.insertOne(newTools);
       res.send(result);
     });
+    app.post("/rating", async (req, res) => {
+      const newTools = req.body;
+      const result = await ratingsCollection.insertOne(newTools);
+      res.send(result);
+    });
 
     app.put("/user/update/:email", async (req, res) => {
       const email = req.params.email;
       const users = req.body;
       const filter = { email: email };
-      console.log(users);
+      const options = { upsert: true };
+      // console.log(users);
       const updatedDoc = {
         $set: {
           name: users.name,
+          phone: users.phone,
+          address: users.address,
         },
       };
 
-      const result = await userCollection.updateOne(filter, updatedDoc);
+      const result = await userCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
       return res.send({ success: true, result });
     });
 
@@ -190,6 +224,25 @@ async function run() {
       const services = await cursor.toArray();
       res.send(services);
     });
+    app.put("/service", async (req, res) => {
+      const _id = req.query.id;
+      const updatedProduct = req.body;
+      console.log(updatedProduct, _id);
+      const filter = { _id: ObjectId(_id) };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          quantity: updatedProduct.quantity,
+        },
+      };
+      const result = await serviceCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      res.send(result);
+    });
+
     app.put("/service/:id", async (req, res) => {
       const _id = req.params.id;
       const updatedProduct = req.body;
@@ -208,32 +261,14 @@ async function run() {
       );
       res.send(result);
     });
+
     app.get("/purchase/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
       const result = await serviceCollection.findOne(query);
       res.send(result);
     });
-    // app.get("/service", async (req, res) => {
-    //   const id = req.query.id;
-    //   console.log(id);
-    //   if (productCode !== undefined && id === undefined) {
-    //     const query = { productCode: productCode };
-    //     const cursor = productsCollection.find(query);
-    //     const products = await cursor.toArray();
-    //     res.send(products);
-    //   } else if (productCode === undefined && id !== undefined) {
-    //     const _id = req.query.id;
-    //     const cursor = productsCollection.find({ _id: ObjectId(_id) });
-    //     const products = await cursor.toArray();
-    //     res.send(products);
-    //   } else {
-    //     const query = {};
-    //     const cursor = productsCollection.find(query);
-    //     const products = await cursor.toArray();
-    //     res.send(products);
-    //   }
-    // });
+
     app.post("/order", async (req, res) => {
       const product = req.body;
       const result = await ordersCollection.insertOne(product);
@@ -257,6 +292,12 @@ async function run() {
       const _id = req.query.id;
       // console.log(id);
       const result = await ordersCollection.deleteOne({ _id: ObjectId(_id) });
+      res.send(result);
+    });
+    app.delete("/service", async (req, res) => {
+      const _id = req.query.id;
+      // console.log(id);
+      const result = await serviceCollection.deleteOne({ _id: ObjectId(_id) });
       res.send(result);
     });
   } finally {
