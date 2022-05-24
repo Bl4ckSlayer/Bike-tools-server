@@ -219,19 +219,35 @@ async function run() {
     });
 
     app.get("/service", async (req, res) => {
-      const query = {};
-      const cursor = serviceCollection.find(query);
-      const services = await cursor.toArray();
-      res.send(services);
+      const productCode = req.query.productCode;
+      const id = req.query.id;
+      if (productCode === undefined && id !== undefined) {
+        const id = req.query.id;
+        const cursor = serviceCollection.find({ _id: ObjectId(id) });
+        const products = await cursor.toArray();
+        res.send(products);
+      } else {
+        const query = {};
+        const cursor = serviceCollection.find(query);
+        const products = await cursor.toArray();
+        res.send(products);
+      }
     });
+    // app.get("/service", async (req, res) => {
+    //   const query = {};
+    //   const cursor = serviceCollection.find(query);
+    //   const services = await cursor.toArray();
+    //   res.send(services);
+    // });
     app.put("/service", async (req, res) => {
-      const _id = req.query.id;
+      const id = req.query.id;
       const updatedProduct = req.body;
-      console.log(updatedProduct, _id);
-      const filter = { _id: ObjectId(_id) };
+      console.log(updatedProduct, id);
+      const filter = { _id: ObjectId(id) };
       const options = { upsert: true };
       const updateDoc = {
         $set: {
+          price: updatedProduct.price,
           quantity: updatedProduct.quantity,
         },
       };
