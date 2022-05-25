@@ -237,7 +237,23 @@ async function run() {
       );
       res.send(result);
     });
-
+    app.put("/order", async (req, res) => {
+      const _id = req.query.id;
+      const updatedProduct = req.body;
+      const filter = { _id: ObjectId(_id) };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          status: updatedProduct.status,
+        },
+      };
+      const result = await ordersCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      res.send(result);
+    });
     // payment order
     app.patch("/order/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
