@@ -43,6 +43,7 @@ async function run() {
     const userCollection = client.db("assignment_12").collection("users");
     const ordersCollection = client.db("assignment_12").collection("orders");
     const ratingsCollection = client.db("assignment_12").collection("ratings");
+    const paymentCollection = client.db("assignment_12").collection("payments");
 
     const verifyAdmin = async (req, res, next) => {
       const requester = req.decoded.email;
@@ -137,63 +138,22 @@ async function run() {
       );
       res.send({ result, token });
     });
-    // app.get("/user/:email", async (req, res) => {
-    //   const email = req.params.email;
-    //   const user = await userCollection.findOne({ email: email });
-    //   const token = jwt.sign(
-    //     { email: email },
-    //     process.env.ACCESS_TOKEN_SECRET,
-    //     { expiresIn: "24h" }
-    //   );
-    //   res.send({ result, token });
-    // });
-    // app.post("/user/:email", async (req, res) => {
-    //   const email = req.params.email;
-    //   const filter = { email: email };
-    //   const user = req.body;
-    //   const options = { upsert: true };
-    //   const updateDoc = { $set: user };
-    //   const result = await userCollection.updateOne(filter, updateDoc, options);
-    //   const token = jwt.sign(
-    //     { email: email },
-    //     process.env.ACCESS_TOKEN_SECRET,
-    //     { expiresIn: "24h" }
-    //   );
-    //   res.send({ result, token });
-    // });
-    // app.post("/user", async (req, res) => {
-    //   const user = req.body;
-    //   const query = {
-    //     name: user.name,
-    //     email: user.email,
-    //     address: user.address,
-    //     phone: user.phone,
-    //     password: user.password,
-    //   };
-    //   const exists = await userCollection.findOne(query);
-    //   if (exists) {
-    //     return res.send({ success: false, user: exists });
-    //   }
-    //   const result = await userCollection.insertOne(user);
-    //   res.send({ success: true, result });
-    // });
 
-    // app.post("/login", async (req, res) => {
-    //   const user = req.body;
-    //   const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-    //     expiresIn: "1d",
-    //   });
-    //   res.send({ accessToken });
-    // });
     app.post("/service", async (req, res) => {
       const newTools = req.body;
       const result = await serviceCollection.insertOne(newTools);
       res.send(result);
     });
-    app.post("/rating", async (req, res) => {
+    app.post("/rating", verifyJWT, async (req, res) => {
       const newTools = req.body;
       const result = await ratingsCollection.insertOne(newTools);
       res.send(result);
+    });
+    app.get("/rating", async (req, res) => {
+      const query = {};
+      const cursor = ratingsCollection.find(query);
+      const products = await cursor.toArray();
+      res.send(products);
     });
 
     app.put("/user/update/:email", async (req, res) => {
@@ -277,17 +237,26 @@ async function run() {
       );
       res.send(result);
     });
+
     // payment order
-    app.patch('/order/:id', verifyJWT, async(req, res) =>{
-      const id  = req.params.id;
+    app.patch("/order/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
       const payment = req.body;
-      const filter = {_id: ObjectId(id)};
+      const filter = { _id: ObjectId(id) };
       const updatedDoc = {
         $set: {
           paid: true,
-          transactionId: payment.transactionId
-        }
-      }
+          transactionId: payment.transactionId,
+        },
+      };
+
+      const result = await paymentCollection.insertOne(payment);
+      const updatedBooking = await ordersCollection.updateOne(
+        filter,
+        updatedDoc
+      );
+      res.send(updatedBooking);
+    });
 
     app.get("/purchase/:id", async (req, res) => {
       const id = req.params.id;
@@ -327,21 +296,24 @@ async function run() {
         res.send(products);
       }
     });
+
     app.get("/order/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
       const order = await ordersCollection.findOne(query);
       res.send(order);
     });
+
     app.delete("/order", async (req, res) => {
       const _id = req.query.id;
-      // console.log(id);
+      console.log(_id);
       const result = await ordersCollection.deleteOne({ _id: ObjectId(_id) });
       res.send(result);
     });
+
     app.delete("/service", async (req, res) => {
       const _id = req.query.id;
-      // console.log(id);
+      console.log(_id);
       const result = await serviceCollection.deleteOne({ _id: ObjectId(_id) });
       res.send(result);
     });
