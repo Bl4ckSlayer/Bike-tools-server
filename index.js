@@ -37,9 +37,7 @@ async function run() {
   try {
     await client.connect();
     const serviceCollection = client.db("assignment_12").collection("services");
-    // const bookingCollection = client
-    //   .db("doctors-portal")
-    //   .collection("bookings");
+
     const userCollection = client.db("assignment_12").collection("users");
     const ordersCollection = client.db("assignment_12").collection("orders");
     const ratingsCollection = client.db("assignment_12").collection("ratings");
@@ -56,26 +54,6 @@ async function run() {
         res.status(403).send({ message: "forbidden" });
       }
     };
-
-    // app.get("/user", verifyJWT, async (req, res) => {
-    //   const users = await userCollection.find().toArray();
-
-    //   res.send(users);
-    // });
-
-    // app.get("/user", verifyJWT, async (req, res) => {
-    //   const client = req.query.client;
-    //   const decodedEmail = req.decoded.email;
-    //   console.log(decodedEmail);
-    //   if (client === decodedEmail) {
-    //     const query = { client: client };
-
-    //     const users = await userCollection.findOne(query).toArray();
-    //     return res.send(users);
-    //   } else {
-    //     return res.status(403).send({ message: "forbidden access" });
-    //   }
-    // });
 
     app.get("/user", verifyJWT, async (req, res) => {
       const email = req.query.email;
@@ -178,9 +156,8 @@ async function run() {
     });
 
     app.get("/service", async (req, res) => {
-      const productCode = req.query.productCode;
       const id = req.query.id;
-      if (productCode === undefined && id !== undefined) {
+      if (id !== undefined) {
         const id = req.query.id;
         const cursor = serviceCollection.find({ _id: ObjectId(id) });
         const products = await cursor.toArray();
@@ -192,12 +169,7 @@ async function run() {
         res.send(products);
       }
     });
-    // app.get("/service", async (req, res) => {
-    //   const query = {};
-    //   const cursor = serviceCollection.find(query);
-    //   const services = await cursor.toArray();
-    //   res.send(services);
-    // });
+
     app.put("/service", async (req, res) => {
       const id = req.query.id;
       const updatedProduct = req.body;
@@ -208,6 +180,7 @@ async function run() {
         $set: {
           price: updatedProduct.price,
           quantity: updatedProduct.quantity,
+          minOrderQuantity: updatedProduct.minOrderQuantity,
           image: updatedProduct.image,
         },
       };
@@ -303,7 +276,7 @@ async function run() {
       const result = await ordersCollection.insertOne(product);
       res.send(result);
     });
-    app.get("/order", async (req, res) => {
+    app.get("/order", verifyJWT, async (req, res) => {
       const email = req.query.email;
       if (email !== undefined) {
         const query = { email: email };
