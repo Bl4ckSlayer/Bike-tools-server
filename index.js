@@ -139,7 +139,7 @@ async function run() {
       res.send({ result, token });
     });
 
-    app.post("/service", async (req, res) => {
+    app.post("/service", verifyJWT, async (req, res) => {
       const newTools = req.body;
       const result = await serviceCollection.insertOne(newTools);
       res.send(result);
@@ -161,7 +161,6 @@ async function run() {
       const users = req.body;
       const filter = { email: email };
       const options = { upsert: true };
-      // console.log(users);
       const updatedDoc = {
         $set: {
           name: users.name,
@@ -209,6 +208,7 @@ async function run() {
         $set: {
           price: updatedProduct.price,
           quantity: updatedProduct.quantity,
+          image: updatedProduct.image,
         },
       };
       const result = await serviceCollection.updateOne(
@@ -273,7 +273,12 @@ async function run() {
       );
       res.send(updatedBooking);
     });
-
+    app.get("/order/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const order = await ordersCollection.findOne(query);
+      res.send(order);
+    });
     app.get("/purchase/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
@@ -311,13 +316,6 @@ async function run() {
         const products = await cursor.toArray();
         res.send(products);
       }
-    });
-
-    app.get("/order/:id", verifyJWT, async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: ObjectId(id) };
-      const order = await ordersCollection.findOne(query);
-      res.send(order);
     });
 
     app.delete("/order", async (req, res) => {
